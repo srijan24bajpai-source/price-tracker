@@ -45,3 +45,9 @@ button.bad{background:var(--bad)}button.good{background:var(--good)}
 .cols{display:grid;gap:16px;grid-template-columns:1fr 1fr}
 @media(max-width:800px){.cols{grid-template-columns:1fr}header.top{margin:8px}}
 .notice{padding:10px 14px;border-radius:12px;background:#fff7e0;color:var(--warn);font-size:.85rem;margin:10px 0}
+.voice-widget{position:fixed;right:16px;bottom:16px;z-index:50;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.voice-fab{width:58px;height:58px;border-radius:50%;font-size:1.5rem;padding:0;box-shadow:0 8px 24px rgba(79,70,229,.45)}
+.voice-fab.on{background:var(--bad);animation:pulse 1.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(217,48,37,.5)}100%{box-shadow:0 0 0 16px rgba(217,48,37,0)}}
+.voice-panel{width:min(380px,calc(100vw - 32px));padding:14px;display:grid;gap:10px}
+.voice-body{display:grid;gap:8px;max-height:45vh;overflow:auto}

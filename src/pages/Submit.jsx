@@ -2,14 +2,15 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { categories, cities, countries } from '../data/meta.js'
 import { addSubmission } from '../lib/store.js'
-import { useProducts } from '../lib/products.jsx'
+import { useProducts, useReload } from '../lib/products.jsx'
 
 export default function Submit() {
   const products = useProducts().filter((p) => !p.community)
+  const reload = useReload()
   const [sp] = useSearchParams()
   const empty = { product_id: sp.get('item') || '', name: '', category: 'electronics', sub: '', price: '', unit: 'piece', seller: '', city: 'Lucknow', country: 'India' }
   const [f, setF] = useState(empty)
-  const [state, setState] = useState('') // '' | 'done' | 'error'
+  const [state, setState] = useState('') // '' | 'pending' | 'approved' | 'error'
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const existing = products.find((p) => p.id === f.product_id)
 
@@ -17,9 +18,10 @@ export default function Submit() {
     e.preventDefault()
     const row = existing ? { ...f, name: existing.name, category: existing.category, sub: existing.sub, unit: existing.unit } : { ...f, product_id: '' }
     try {
-      await addSubmission(row)
+      const status = await addSubmission(row)
       setF({ ...empty, product_id: '' })
-      setState('done')
+      setState(status)
+      reload()
     } catch {
       setState('error')
     }
@@ -28,7 +30,8 @@ export default function Submit() {
     <>
       <h1>➕ Add a price</h1>
       <p className="sub">Report a newer price for a listed item, or add something new. Approved reports update the site's prices.</p>
-      {state === 'done' && <div className="reco">Thanks! Your submission is pending approval.</div>}
+      {state === 'pending' && <div className="reco">Thanks! Saved and waiting for admin approval, it will appear on the site once approved.</div>}
+      {state === 'approved' && <div className="reco">Added and live now (you are signed in as admin).</div>}
       {state === 'error' && <div className="notice">Could not submit right now. Please try again.</div>}
       <form className="form glass" onSubmit={submit}>
         <label>Which item?

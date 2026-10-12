@@ -8,13 +8,17 @@ export const usingDatabase = !!supabase
 // ---- Submissions -------------------------------------------------------
 const toRow = (s) => ({ name: s.name, category: s.category, sub: s.sub || null, price: Number(s.price), unit: s.unit || 'unit', seller: s.seller || null, city: s.city, country: s.country, product_id: s.product_id || null })
 
+// Returns 'approved' when the signed-in admin adds it (goes live immediately), otherwise 'pending'.
 export async function addSubmission(s) {
+  const isAdmin = await adminSession()
+  const status = isAdmin ? 'approved' : 'pending'
   if (supabase) {
-    const { error } = await supabase.from('submissions').insert(toRow(s))
+    const { error } = await supabase.from('submissions').insert({ ...toRow(s), status })
     if (error) throw error
-    return
+    return status
   }
-  write('pt_submissions', [...read('pt_submissions', []), { ...s, id: Date.now(), status: 'pending', created_at: new Date().toISOString() }])
+  write('pt_submissions', [...read('pt_submissions', []), { ...s, id: Date.now(), status, created_at: new Date().toISOString() }])
+  return status
 }
 
 // Approved items are public. Admin (signed in) can list everything.
@@ -68,7 +72,12 @@ export async function adminSession() {
 }
 export async function adminLogin(email, password) {
   if (!supabase) {
-    if (password !== (import.meta.env.VITE_ADMIN_PASSWORD || 'admin123')) throw new Error('Wrong password')
+    // Demo mode only (no Supabase): compares a SHA-256 hash so the password is not stored in plain text.
+    // This is NOT real security, since the check runs in the browser. Use Supabase auth for production.
+    const hash = import.meta.env.VITE_ADMIN_PASSWORD_HASH || '98c1a1daf846352a075a28a78fdec842d52943251df9a1b4e685cac6c252ce13'
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password))
+    const hex = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
+    if (hex !== hash) throw new Error('Wrong password')
     sessionStorage.setItem('pt_admin', '1')
     return
   }

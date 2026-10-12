@@ -11,13 +11,14 @@ export default function Compare() {
   const [q, setQ] = useState('')
   const [sortBy, setSortBy] = useState('name')
   const [dir, setDir] = useState(1)
+  const [show, setShow] = useState('both') // both | inr | local
 
   const products = useProducts()
   const live = useLive()
   const rows = useMemo(() => {
     const list = products.filter((p) => (cat === 'all' || p.category === cat) && (!q || p.name.toLowerCase().includes(q.toLowerCase())))
     const out = list.map((p) => {
-      const cells = world ? p.countryPrices.map((c) => ({ label: c.country, flag: c.flag, v: c.inr, text: c.symbol + Math.round(c.local).toLocaleString() })) : p.cityPrices.map((c) => ({ label: c.city, v: c.price, text: money(c.price) }))
+      const cells = world ? p.countryPrices.map((c) => ({ label: c.country, flag: c.flag, v: c.inr, text: (c.est ? '~' : '') + c.symbol + Math.round(c.local).toLocaleString(), inrText: (c.est ? '~' : '') + '₹' + Math.round(c.inr).toLocaleString('en-IN'), isIndia: c.country === 'India' })) : p.cityPrices.map((c) => ({ label: c.city, v: c.price, text: money(c.price) }))
       const min = cells.reduce((a, b) => (b.v < a.v ? b : a))
       const max = cells.reduce((a, b) => (b.v > a.v ? b : a))
       return { p, cells, min, max, gap: (max.v - min.v) / max.v }
@@ -33,7 +34,7 @@ export default function Compare() {
     <>
       <h1>{world ? '🌍 World price comparison' : '🇮🇳 India city price comparison'}</h1>
       <p className="sub">
-        {world ? 'Local currency shown in each cell; cheapest country highlighted. Totals converted to ₹ for ranking.' : 'Cheapest city highlighted for every item.'}{' '}
+        {world ? 'Every price is shown in ₹ (converted at live exchange rates) with the local currency underneath; cheapest country highlighted. ~ = estimate.' : 'Cheapest city highlighted for every item.'}{' '}
         {world && (live?.fxUpdated ? <span className="tag badge-best">● Live FX rates · {live.fxUpdated}</span> : <span className="tag">FX rates: sample</span>)}{' '}
         <Link to={world ? '/compare/india' : '/compare/world'}><b>Switch to {world ? 'India' : 'World'} →</b></Link>
       </p>
@@ -42,6 +43,13 @@ export default function Compare() {
           <option value="all">All categories</option>
           {categories.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
         </select>
+        {world && (
+          <select value={show} onChange={(e) => setShow(e.target.value)}>
+            <option value="both">Show: ₹ and local currency</option>
+            <option value="inr">Show: ₹ only</option>
+            <option value="local">Show: local currency only</option>
+          </select>
+        )}
         <input placeholder="Filter items…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       <div className="glass tablewrap">
@@ -58,7 +66,7 @@ export default function Compare() {
             {rows.map(({ p, cells, min, gap }) => (
               <tr key={p.id}>
                 <td><Link to={'/product/' + p.id}><b>{p.name}</b></Link><div className="muted">per {p.unit}</div></td>
-                {cells.map((c) => <td key={c.label} style={c.label === min.label ? { background: 'rgba(15,157,88,.14)', fontWeight: 700 } : undefined}>{c.text}</td>)}
+                {cells.map((c) => <td key={c.label} style={c.label === min.label ? { background: 'rgba(15,157,88,.14)', fontWeight: 700 } : undefined}>{world && !c.isIndia && show !== 'local' ? (<><div>{c.inrText}</div>{show === 'both' && <div className="muted">{c.text}</div>}</>) : c.text}</td>)}
                 <td className="down"><b>{min.flag} {min.label}</b></td>
                 <td>{Math.round(gap * 100)}%</td>
               </tr>

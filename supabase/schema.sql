@@ -35,6 +35,10 @@ alter table public.comments enable row level security;
 create policy "anyone can submit" on public.submissions
   for insert to anon, authenticated with check (status = 'pending');
 
+-- Signed-in admin may add entries that go live immediately
+create policy "admin inserts any" on public.submissions
+  for insert to authenticated with check (true);
+
 -- Public sees approved only; signed-in admin sees everything
 create policy "public reads approved" on public.submissions
   for select to anon using (status = 'approved');
@@ -55,3 +59,15 @@ create policy "admin deletes comments" on public.comments for delete to authenti
 -- Then: Authentication -> Users -> Add user (your admin email + password),
 -- and turn OFF "Allow new users to sign up" (Authentication -> Providers -> Email)
 -- so nobody else can become an authenticated admin.
+
+-- Daily price snapshots, written by the /api/daily-snapshot Vercel cron job (service role key, server-side only).
+create table if not exists public.price_history (
+  day date not null,
+  item_id text not null,
+  price numeric not null,
+  source text,
+  primary key (day, item_id)
+);
+alter table public.price_history enable row level security;
+-- Everyone can read the history; nobody but the server (service role bypasses RLS) can write it.
+create policy "public reads price history" on public.price_history for select to anon, authenticated using (true);
